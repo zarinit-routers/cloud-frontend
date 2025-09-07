@@ -3,4 +3,10 @@ type Node = {
     name: string;
     tags: string[];
 };
-export type { Node };
+
+type Response = {
+    data: {};
+    requestError: string;
+    commandError: string;
+};
+export type { Node, Response };
