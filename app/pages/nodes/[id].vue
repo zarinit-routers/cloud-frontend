@@ -53,20 +53,21 @@ onMounted(async () => {});
 console.log(commandData.value);
 </script>
 <template>
+    
     <div>
-        <h1>{{ data?.node.name }}</h1>
-        <div>{{ data?.node.id }}</div>
+        <h1 class="m-3">{{ data?.node.name }}</h1>
+        <div class="m-3">{{ data?.node.id }}</div>
 
         <div v-if="commandData">
-            <div v-if="commandData.data">
+            <div class="bg-[#222228] p-3 rounded-xl m-3" v-if="commandData.data">
                 Timezone: <span>{{ commandData.data.timezone }}</span>
             </div>
             <div v-if="commandData.requestError">{{ commandData.requestError }}</div>
             <div v-if="commandData.commandError">{{ commandData.commandError }}</div>
-            <div v-if="commandData.data">
+            <div class="p-1 bg-[#37343D] m-3" v-if="commandData.data">
                 <form @submit.prevent="onTimezoneSet">
                     <select v-model="formTimezone">
-                        <option v-for="timezone in Intl.supportedValuesOf('timeZone')" :selected="timezone == commandData.data.timezone" :key="timezone">{{ timezone }}</option>
+                        <option class="bg-[#37343D]" v-for="timezone in Intl.supportedValuesOf('timeZone')" :selected="timezone == commandData.data.timezone" :key="timezone">{{ timezone }}</option>
                     </select>
                     <input type="submit" value="Применить" v-show="commandData.data.timezone != formTimezone" />
                 </form>
