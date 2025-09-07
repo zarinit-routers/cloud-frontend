@@ -27,7 +27,7 @@ const { data: commandData } = await useFetch<Response>("/api/cmd/v1/timezone/get
 const formTimezone = ref<string>(commandData.value.data.timezone);
 
 const onTimezoneSet = async () => {
-    const { data: commandData } = await useFetch<Response>("/api/cmd/v1/timezone/set", {
+    await useFetch<Response>("/api/cmd/v1/timezone/set", {
         body: {
             nodeId: id.value,
             args: {
@@ -38,6 +38,13 @@ const onTimezoneSet = async () => {
         server: false,
         headers: {
             Authorization: TOKEN,
+        },
+        onResponse: ({ response }) => {
+            if (!response.ok) {
+                console.error("Response is not ok");
+            }
+            console.log(response._data);
+            commandData.value = response._data;
         },
     });
 };
@@ -56,7 +63,7 @@ console.log(commandData.value);
             </div>
             <div v-if="commandData.requestError">{{ commandData.requestError }}</div>
             <div v-if="commandData.commandError">{{ commandData.commandError }}</div>
-            <div v-if="commandData">
+            <div v-if="commandData.data">
                 <form @submit.prevent="onTimezoneSet">
                     <select v-model="formTimezone">
                         <option v-for="timezone in Intl.supportedValuesOf('timeZone')" :selected="timezone == commandData.data.timezone" :key="timezone">{{ timezone }}</option>
