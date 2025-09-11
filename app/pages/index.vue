@@ -6,14 +6,10 @@ const { data: connected, error } = await useFetch<{ nodes: Node[] }>("/api/clien
         Authorization: TOKEN,
     },
 });
-if (error) {
-    console.error(error.value);
-}
-
 </script>
 
 <template>
-    <div class="flex">
-        <NodeCard class="gap-4" v-for="node in connected?.nodes" :node="node"></NodeCard>
+    <div class="flex gap-4 m-5">
+        <NodeCard class="" v-for="node in connected?.nodes" :node="node"></NodeCard>
     </div>
 </template>

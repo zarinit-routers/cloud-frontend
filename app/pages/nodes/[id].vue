@@ -4,15 +4,16 @@ import { TOKEN } from "@/consts";
 
 const route = useRoute();
 const id = computed(() => route.params.id);
-const { data, error } = await useFetch<{ node: Node }>(() => "/api/clients/" + id.value, {
+const { data, error, status } = await useFetch<{ node: Node }>(() => "/api/clients/" + id.value, {
     server: false,
     headers: {
         Authorization: TOKEN,
     },
+    onRequestError: (error) => {
+        console.error(error);
+    },
 });
-if (error.value) {
-    console.error(error.value);
-}
+const formTimezone = ref<string>();
 const { data: commandData } = await useFetch<Response>("/api/cmd/v1/timezone/get", {
     body: {
         nodeId: id.value,
@@ -22,9 +23,16 @@ const { data: commandData } = await useFetch<Response>("/api/cmd/v1/timezone/get
     headers: {
         Authorization: TOKEN,
     },
-});
+    onResponse: ({ response }) => {
+        if (!response.ok) {
+            console.error("Response is not ok");
+            return;
+        }
 
-const formTimezone = ref<string>(commandData.value.data.timezone);
+        formTimezone.value = response._data.data.timezone;
+        console.log(response._data);
+    },
+});
 
 const onTimezoneSet = async () => {
     await useFetch<Response>("/api/cmd/v1/timezone/set", {
@@ -50,16 +58,15 @@ const onTimezoneSet = async () => {
 };
 
 onMounted(async () => {});
-console.log(commandData.value);
 </script>
 <template>
-    
     <div>
         <h1 class="m-3">{{ data?.node.name }}</h1>
         <div class="m-3">{{ data?.node.id }}</div>
 
+        <!-- <CommandSender :nodeId="id" /> -->
         <div v-if="commandData">
-            <div class="bg-[#222228] p-3 rounded-xl m-3" v-if="commandData.data">
+            <div class="bg-[#222228] p-3 rounded-xl m-3" v-if="commandData.data?.timezone">
                 Timezone: <span>{{ commandData.data.timezone }}</span>
             </div>
             <div v-if="commandData.requestError">{{ commandData.requestError }}</div>
