@@ -136,6 +136,7 @@ const selectPresetCommand = (command: string) => {
 };
 
 onMounted(async () => {});
+const showCommandModal = ref(false);
 
 const strId = computed(() => {
     if (typeof id.value === "string") {
@@ -152,63 +153,77 @@ const strId = computed(() => {
 
         <tag-edit :id="strId" :tags="data?.node.tags" v-if="data" />
 
+        <button 
+            @click="showCommandModal = true"
+            class="m-3 px-4 py-2 bg-blue-600 rounded hover:bg-blue-700"
+        >
+        Открыть командный интерфейс
+         </button>
+
         <!-- Командный интерфейс -->
-        <div class="m-3 p-4 bg-[#222228] rounded-xl">
-            <h2 class="text-lg font-semibold mb-4">Командный интерфейс</h2>
+        
 
-            <!-- Быстрый выбор команд -->
-            <div class="mb-4">
-                <label class="block text-sm font-medium mb-2">Быстрый выбор команды:</label>
-                <select v-model="commandInput" class="w-full p-2 bg-[#37343D] rounded border border-gray-600" @change="selectPresetCommand(commandInput)">
-                    <option v-for="cmd in presetCommands" :key="cmd" :value="cmd" class="bg-[#37343D]">
-                        {{ cmd }}
-                    </option>
-                </select>
-            </div>
+        <div v-if="showCommandModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-[#222228] rounded-lg p-6 w-full max-w-2xl">
+                <div class="m-3 p-4 bg-[#222228] rounded-xl">
+                    <h2 class="text-lg font-semibold mb-4">Командный интерфейс</h2>
 
-            <!-- Ручной ввод команды -->
-            <div class="mb-4">
-                <label class="block text-sm font-medium mb-2">Команда:</label>
-                <input v-model="commandInput" placeholder="Введите команду (например: v1/timezone/get)" class="w-full p-2 bg-[#37343D] rounded border border-gray-600" />
-            </div>
-
-            <!-- Тело запроса -->
-            <div class="mb-4">
-                <label class="block text-sm font-medium mb-2">Тело запроса (JSON):</label>
-                <textarea v-model="requestBody" placeholder='{"timezone": "Europe/Moscow"}' class="w-full h-32 p-2 bg-[#37343D] rounded border border-gray-600 font-mono text-sm" spellcheck="false" />
-            </div>
-
-            <!-- Кнопка выполнения -->
-            <button @click="executeCommand" :disabled="isLoading" class="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50">
-                {{ isLoading ? "Выполнение..." : "Выполнить команду" }}
-            </button>
-
-            <!-- Отображение ответа -->
-            <div v-if="commandResponse || commandError" class="mt-6">
-                <h3 class="text-md font-semibold mb-2">Ответ:</h3>
-
-                <div v-if="commandError" class="p-3 bg-red-900 rounded text-red-100">
-                    {{ commandError }}
-                </div>
-
-                <div v-if="commandResponse" class="space-y-3">
-                    <div v-if="commandResponse.data" class="p-3 bg-green-900 rounded">
-                        <div class="font-semibold">Данные:</div>
-                        <pre class="text-sm mt-1 overflow-auto">{{ JSON.stringify(commandResponse.data, null, 2) }}</pre>
+                    <!-- Быстрый выбор команд -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium mb-2">Быстрый выбор команды:</label>
+                        <select v-model="commandInput" class="w-full p-2 bg-[#37343D] rounded border border-gray-600" @change="selectPresetCommand(commandInput)">
+                            <option v-for="cmd in presetCommands" :key="cmd" :value="cmd" class="bg-[#37343D]">
+                                {{ cmd }}
+                            </option>
+                        </select>
                     </div>
 
-                    <div v-if="commandResponse.commandError" class="p-3 bg-yellow-900 rounded">
-                        <div class="font-semibold">Ошибка команды:</div>
-                        <pre class="text-sm mt-1">{{ commandResponse.commandError }}</pre>
+                    <!-- Ручной ввод команды -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium mb-2">Команда:</label>
+                        <input v-model="commandInput" placeholder="Введите команду (например: v1/timezone/get)" class="w-full p-2 bg-[#37343D] rounded border border-gray-600" />
                     </div>
 
-                    <div v-if="commandResponse.requestError" class="p-3 bg-red-900 rounded">
-                        <div class="font-semibold">Ошибка запроса:</div>
-                        <pre class="text-sm mt-1">{{ commandResponse.requestError }}</pre>
+                    <!-- Тело запроса -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium mb-2">Тело запроса (JSON):</label>
+                        <textarea v-model="requestBody" placeholder='{"timezone": "Europe/Moscow"}' class="w-full h-32 p-2 bg-[#37343D] rounded border border-gray-600 font-mono text-sm" spellcheck="false" />
+                    </div>
+
+                    <!-- Кнопка выполнения -->
+                    <button @click="executeCommand" :disabled="isLoading" class="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50">
+                        {{ isLoading ? "Выполнение..." : "Выполнить команду" }}
+                    </button>
+
+                    <!-- Отображение ответа -->
+                    <div v-if="commandResponse || commandError" class="mt-6">
+                        <h3 class="text-md font-semibold mb-2">Ответ:</h3>
+
+                        <div v-if="commandError" class="p-3 bg-red-900 rounded text-red-100">
+                            {{ commandError }}
+                        </div>
+
+                        <div v-if="commandResponse" class="space-y-3">
+                            <div v-if="commandResponse.data" class="p-3 bg-green-900 rounded">
+                                <div class="font-semibold">Данные:</div>
+                                <pre class="text-sm mt-1 overflow-auto">{{ JSON.stringify(commandResponse.data, null, 2) }}</pre>
+                            </div>
+
+                            <div v-if="commandResponse.commandError" class="p-3 bg-yellow-900 rounded">
+                                <div class="font-semibold">Ошибка команды:</div>
+                                <pre class="text-sm mt-1">{{ commandResponse.commandError }}</pre>
+                            </div>
+
+                            <div v-if="commandResponse.requestError" class="p-3 bg-red-900 rounded">
+                                <div class="font-semibold">Ошибка запроса:</div>
+                                <pre class="text-sm mt-1">{{ commandResponse.requestError }}</pre>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
+
 
         <!-- <CommandSender :nodeId="id" /> Блок Тайм зоны -->
         <div v-if="commandData">
