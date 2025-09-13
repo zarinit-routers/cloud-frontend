@@ -133,7 +133,13 @@ onMounted(() => {
 
 // Функции для получения данных с мемоизацией
 const getMacAddress = computed(() => {
-  return props.node.mac || '';
+  if (!osInfo.value?.NetworkStats?.length) return '';
+    return osInfo?.value?.NetworkStats[0]?.MAC || '';
+});
+
+const getIpAddress = computed(() => {
+  if (!osInfo.value?.NetworkStats?.length) return '';
+  return osInfo?.value?.NetworkStats[0]?.IP || '';
 });
 
 const getDeviceName = computed(() => {
@@ -198,7 +204,10 @@ const forceRefresh = async (event: Event) => {
         <!-- Заголовок -->
         <div class="flex items-center justify-between mb-3">
           <h3 class="font-bold text-lg truncate max-w-[200px]">
-            {{ getDeviceName }}
+            {{ getDeviceName }}<span v-if="node.name" class="text-xs text-gray-400">
+              ({{ node.name }})
+            </span>
+            
             <span v-if="isLoading" class="ml-2 text-yellow-400 text-sm">⟳</span>
           </h3>
           <div class="flex items-center gap-2">
@@ -230,7 +239,7 @@ const forceRefresh = async (event: Event) => {
           <div class="flex justify-between items-center">
             <span class="text-gray-400">IP:</span>
             <span class="font-mono text-xs text-gray-300">
-              {{ props.node.ip || 'не указан' }}
+              {{ getIpAddress || 'не указан' }}
             </span>
           </div>
 
@@ -293,7 +302,7 @@ const forceRefresh = async (event: Event) => {
                 :key="tag" 
                 class="px-2 py-0.5 bg-blue-500/20 rounded text-xs text-blue-300"
               >
-                {{ tag }}
+                {{ tag.tag }}
               </span>
             </div>
           </div>

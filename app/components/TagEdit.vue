@@ -68,7 +68,7 @@ const removeTag = async (tag: string) => {
         const { error } = await useFetch("/api/clients/tags/remove", {
             method: "POST",
             body: {
-                tags: [tag], id: props.id
+                tags: [tag.tag], id: props.id
             },
             headers: {
                 Authorization: TOKEN,
@@ -132,7 +132,7 @@ const handleKeyPress = (event: KeyboardEvent) => {
                 <span v-if="tags && tags.length" class="flex flex-wrap gap-1 mt-1">
                     <span v-for="tag in tags" :key="tag" 
                          class="inline-flex items-center bg-blue-500/20 px-2 py-1 rounded text-sm">
-                        {{ tag }}
+                        {{ tag.tag }}
                         <button @click="removeTag(tag)" 
                                 :disabled="isLoading"
                                 class="ml-1 text-red-400 hover:text-red-300 text-xs">

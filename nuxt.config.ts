@@ -13,6 +13,11 @@ export default defineNuxtConfig({
                 },
             },
         },
+        
     },
     css: ["/main.css"],
+    devServer: {
+        port: 3001,
+    
+    },
 });
