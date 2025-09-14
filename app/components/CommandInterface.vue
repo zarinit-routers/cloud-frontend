@@ -24,7 +24,8 @@ const presetCommands = [
   "v1/ssh/get-status", 
   "v1/ssh/enable", 
   "v1/ssh/disable", 
-  "v1/system/reboot"
+  "v1/system/reboot",
+  "v1/journals/get"
 ];
 
 // Функция для выполнения команды

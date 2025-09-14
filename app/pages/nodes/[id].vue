@@ -2,6 +2,11 @@
 import type { Node, Response } from "@/models";
 import { TOKEN } from "@/consts";
 import CommandInterface from "@/components/CommandInterface.vue";
+import DeviceHeader from "@/components/DeviceHeader.vue";
+import SystemResources from "@/components/SystemResources.vue";
+import ModemsSection from "@/components/ModemsSection.vue";
+import InfoItem from "@/components/InfoItem.vue";
+import TagEdit from "@/components/TagEdit.vue";
 
 const route = useRoute();
 const id = computed(() => route.params.id);
@@ -37,6 +42,15 @@ const isLoading = ref(false);
 const lastUpdated = ref<number | null>(null);
 const hasError = ref(false);
 const showCommandModal = ref(false);
+
+// Новые состояния для SSH, модемов и логов
+const sshStatus = ref<boolean>(false);
+const modemsList = ref<any[]>([]);
+const simCards = ref<any[]>([]);
+const selectedJournal = ref<string>('system');
+const journalContent = ref<string>('');
+const showLogsModal = ref(false);
+const isRebooting = ref(false);
 
 // Timezone
 const formTimezone = ref<string>();
@@ -105,12 +119,110 @@ const executeDeviceCommand = async (command: string, args?: any): Promise<any> =
   }
 };
 
+// Функции для управления SSH
+const getSshStatus = async () => {
+  try {
+    const status = await executeDeviceCommand('v1/ssh/get-status');
+    sshStatus.value = status.enabled;
+    return status;
+  } catch (error) {
+    console.error('Ошибка получения статуса SSH:', error);
+    throw error;
+  }
+};
+
+const toggleSsh = async () => {
+  try {
+    const command = sshStatus.value ? 'v1/ssh/disable' : 'v1/ssh/enable';
+    const result = await executeDeviceCommand(command);
+    sshStatus.value = result.enabled;
+    return result;
+  } catch (error) {
+    console.error('Ошибка переключения SSH:', error);
+    throw error;
+  }
+};
+
+// Функция перезагрузки системы
+const rebootSystem = async () => {
+  if (!confirm('Вы уверены, что хотите перезагрузить систему?')) {
+    return;
+  }
+
+  isRebooting.value = true;
+  try {
+    await executeDeviceCommand('v1/system/reboot');
+    setTimeout(() => {
+      isRebooting.value = false;
+      alert('Система перезагружается...');
+    }, 2000);
+  } catch (error) {
+    console.error('Ошибка перезагрузки:', error);
+    isRebooting.value = false;
+    alert('Команда перезагрузки отправлена (может возвращать ошибку из-за специфики выполнения)');
+  }
+};
+
+// Функции для работы с модемами и SIM-картами
+const loadModems = async () => {
+  try {
+    modemsList.value = await executeDeviceCommand('v1/modems/list');
+    return modemsList.value;
+  } catch (error) {
+    console.error('Ошибка загрузки модемов:', error);
+    throw error;
+  }
+};
+
+const toggleModem = async (modemId: string, enable: boolean) => {
+  try {
+    const command = enable ? 'v1/modems/enable' : 'v1/modems/disable';
+    await executeDeviceCommand(command, { modem: modemId });
+    await loadModems();
+  } catch (error) {
+    console.error('Ошибка переключения модема:', error);
+    throw error;
+  }
+};
+
+const getModemSignal = async (modemId: string) => {
+  try {
+    const signal = await executeDeviceCommand('v1/modems/get-signal', { modem: modemId });
+    // Обновляем данные модема
+    const modemIndex = modemsList.value.findIndex(m => m.id === modemId);
+    if (modemIndex !== -1) {
+      modemsList.value[modemIndex].signal = signal.signal;
+    }
+    return signal;
+  } catch (error) {
+    console.error('Ошибка получения сигнала модема:', error);
+    throw error;
+  }
+};
+
+// Функции для работы с журналами
+const loadJournal = async (journal: string) => {
+  try {
+    const result = await executeDeviceCommand('v1/journals/get', { journal });
+    journalContent.value = result.journal || result.content || '';
+    return result;
+  } catch (error) {
+    console.error('Ошибка загрузки журнала:', error);
+    throw error;
+  }
+};
+
+const showJournalModal = async (journal: string = 'system') => {
+  selectedJournal.value = journal;
+  showLogsModal.value = true;
+  await loadJournal(journal);
+};
+
 // Загрузка данных с улучшенным кэшированием
 const loadDeviceData = async () => {
   const now = Date.now();
   const cacheTimestamp = localStorage.getItem(CACHE_TIMESTAMP_KEY);
   
-  // Проверяем, нужно ли обновлять данные (прошло больше 5 минут)
   if (cacheTimestamp && (now - parseInt(cacheTimestamp)) < 5 * 60 * 1000) {
     loadFromCache();
     return;
@@ -120,13 +232,13 @@ const loadDeviceData = async () => {
   hasError.value = false;
 
   try {
-    // Используем Promise.all для параллельного выполнения
-    const [osData, deviceData] = await Promise.allSettled([
+    const [osData, deviceData, sshData, modemsData] = await Promise.allSettled([
       executeDeviceCommand('v1/system/get-os-info'),
-      executeDeviceCommand('v1/system/get-device-info')
+      executeDeviceCommand('v1/system/get-device-info'),
+      getSshStatus(),
+      loadModems()
     ]);
 
-    // Обрабатываем результаты
     let updated = false;
     
     if (osData.status === 'fulfilled' && osData.value) {
@@ -141,12 +253,19 @@ const loadDeviceData = async () => {
       updated = true;
     }
 
+    if (sshData.status === 'fulfilled' && sshData.value) {
+      sshStatus.value = sshData.value.enabled;
+    }
+
+    if (modemsData.status === 'fulfilled' && modemsData.value) {
+      modemsList.value = modemsData.value;
+    }
+
     if (updated) {
       lastUpdated.value = now;
       localStorage.setItem(CACHE_TIMESTAMP_KEY, now.toString());
     }
 
-    // Если оба запроса провалились
     if (osData.status === 'rejected' && deviceData.status === 'rejected') {
       throw new Error('Не удалось получить данные устройства');
     }
@@ -183,7 +302,7 @@ const loadFromCache = () => {
   }
 };
 
-// Функции для получения данных
+// Computed свойства
 const getMacAddress = computed(() => {
   if (!osInfo.value?.NetworkStats?.length) return '';
   return osInfo?.value?.NetworkStats[0]?.MAC || '';
@@ -234,11 +353,6 @@ const getLoadInfo = computed(() => {
   return osInfo.value.LoadAverage.Loadavg1.toFixed(2);
 });
 
-const formatLastUpdated = () => {
-  if (!lastUpdated.value) return '';
-  return new Date(lastUpdated.value).toLocaleTimeString();
-};
-
 const forceRefresh = async () => {
   await loadDeviceData();
 };
@@ -247,13 +361,8 @@ const forceRefresh = async () => {
 let refreshTimer: NodeJS.Timeout;
 
 onMounted(async () => {
-  // Сначала загружаем из кэша для мгновенного отображения
   loadFromCache();
-  
-  // Затем пытаемся обновить данные
   setTimeout(loadDeviceData, 1000);
-  
-  // Устанавливаем таймер для обновления каждые 5 минут
   refreshTimer = setInterval(loadDeviceData, 5 * 60 * 1000);
 });
 
@@ -266,38 +375,15 @@ onUnmounted(() => {
 
 <template>
   <div class="min-h-screen bg-[#1a1a1f] text-white p-4">
-    <!-- Шапка с информацией об устройстве -->
-    <div class="flex items-center justify-between mb-6">
-      <div>
-        <h1 class="text-2xl font-bold">{{ data?.node.name || 'Устройство' }}</h1>
-        <p class="text-gray-400 text-sm">{{ deviceInfo.manufacturer }} {{ deviceInfo.model }} {{ deviceInfo.firmwareVersion }}</p>
-      </div>
-      
-      <div class="flex items-center gap-3">
-        <!-- Индикатор статуса -->
-        <div class="flex items-center gap-2">
-          <div class="w-3 h-3 rounded-full" :class="hasError ? 'bg-red-500' : 'bg-green-500'"></div>
-          <span class="text-sm text-gray-400">{{ hasError ? 'Ошибка' : 'Онлайн' }}</span>
-        </div>
-        
-        <!-- Кнопка обновления -->
-        <button 
-          @click="forceRefresh" 
-          class="p-2 bg-[#37343D] rounded-lg hover:bg-[#45434d] transition-colors"
-          :disabled="isLoading"
-        >
-          <span v-if="isLoading" class="animate-spin">⟳</span>
-          <span v-else>🔄</span>
-        </button>
-        
-        <!-- Время последнего обновления -->
-        <span v-if="lastUpdated" class="text-sm text-gray-400">
-          Обновлено: {{ formatLastUpdated() }}
-        </span>
-      </div>
-    </div>
+    <DeviceHeader 
+      :nodeName="data?.node.name"
+      :deviceInfo="deviceInfo"
+      :hasError="hasError"
+      :isLoading="isLoading"
+      :lastUpdated="lastUpdated"
+      @refresh="forceRefresh"
+    />
 
-    <!-- Основной контент -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <!-- Левая колонка - Информация об устройстве -->
       <div class="lg:col-span-2 space-y-6">
@@ -320,47 +406,51 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <!-- Карточка с ресурсами -->
-        <div class="bg-[#222228] rounded-xl p-6">
-          <h2 class="text-lg font-semibold mb-4">Ресурсы системы</h2>
-          <div class="space-y-4">
-            <!-- Память -->
-            <div v-if="getMemoryInfo">
-              <div class="flex justify-between items-center mb-2">
-                <span class="text-gray-400">Память</span>
-                <span class="text-sm text-gray-300">{{ getMemoryInfo.used }} / {{ getMemoryInfo.total }}</span>
-              </div>
-              <div class="w-full bg-[#37343D] rounded-full h-2">
-                <div 
-                  class="h-2 rounded-full transition-all duration-300"
-                  :class="{
-                    'bg-green-500': getMemoryInfo.usagePercent < 70,
-                    'bg-yellow-500': getMemoryInfo.usagePercent >= 70 && getMemoryInfo.usagePercent < 90,
-                    'bg-red-500': getMemoryInfo.usagePercent >= 90
-                  }"
-                  :style="{ width: getMemoryInfo.usagePercent + '%' }"
-                ></div>
-              </div>
-            </div>
+        <SystemResources 
+          :memoryInfo="getMemoryInfo"
+          :diskInfo="getDiskInfo"
+        />
 
-            <!-- Диск -->
-            <div v-if="getDiskInfo">
-              <div class="flex justify-between items-center mb-2">
-                <span class="text-gray-400">Дисковое пространство</span>
-                <span class="text-sm text-gray-300">{{ getDiskInfo.used }} / {{ getDiskInfo.total }}</span>
-              </div>
-              <div class="w-full bg-[#37343D] rounded-full h-2">
-                <div 
-                  class="h-2 rounded-full transition-all duration-300"
-                  :class="{
-                    'bg-green-500': getDiskInfo.usagePercent < 70,
-                    'bg-yellow-500': getDiskInfo.usagePercent >= 70 && getDiskInfo.usagePercent < 90,
-                    'bg-red-500': getDiskInfo.usagePercent >= 90
-                  }"
-                  :style="{ width: getDiskInfo.usagePercent + '%' }"
-                ></div>
-              </div>
-            </div>
+        <!-- Управление SSH -->
+        <div class="bg-[#222228] rounded-xl p-6">
+          <h2 class="text-lg font-semibold mb-4">Управление SSH</h2>
+          <div class="flex items-center justify-between">
+            <span class="text-gray-300">SSH доступ</span>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input 
+                type="checkbox" 
+                class="sr-only peer" 
+                :checked="sshStatus" 
+                @change="toggleSsh"
+              >
+              <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+          </div>
+          <p class="text-sm text-gray-400 mt-2">
+            Текущий статус: {{ sshStatus ? 'Включен' : 'Выключен' }}
+          </p>
+        </div>
+
+        <!-- Кнопки управления системой -->
+        <div class="bg-[#222228] rounded-xl p-6">
+          <h2 class="text-lg font-semibold mb-4">Управление системой</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <button 
+              @click="rebootSystem" 
+              class="px-4 py-3 bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center gap-2"
+              :disabled="isRebooting"
+            >
+              <span v-if="isRebooting" class="animate-spin">⟳</span>
+              <span v-else>🔄</span>
+              {{ isRebooting ? 'Перезагрузка...' : 'Перезагрузить систему' }}
+            </button>
+            
+            <button 
+              @click="showJournalModal('system')"
+              class="px-4 py-3 bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
+            >
+              📋 Системные логи
+            </button>
           </div>
         </div>
 
@@ -414,25 +504,54 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- Правая колонка - Сим карты (заглушка) -->
+      <!-- Правая колонка - Сим карты и модемы -->
       <div class="space-y-6">
-        <!-- Блок SIM карт -->
-        <div class="bg-[#222228] rounded-xl p-6">
-          <h2 class="text-lg font-semibold mb-4">SIM карты</h2>
-          <div class="text-center py-8 text-gray-400">
-            <div class="text-4xl mb-2">📱</div>
-            <p>Информация о SIM картах</p>
-            <p class="text-sm">Функциональность в разработке</p>
-          </div>
-        </div>
+        <ModemsSection 
+          :modemsList="modemsList"
+          @toggleModem="toggleModem"
+          @getSignal="getModemSignal"
+          @refreshModems="loadModems"
+        />
 
         <!-- Дополнительная информация -->
         <div class="bg-[#222228] rounded-xl p-6">
           <h2 class="text-lg font-semibold mb-4">Дополнительно</h2>
           <div class="space-y-3">
             <InfoItem label="Статус" :value="hasError ? 'Ошибка подключения' : 'Активно'" />
-            <InfoItem label="Последнее обновление" :value="formatLastUpdated()" />
+            <InfoItem label="Последнее обновление" :value="lastUpdated ? new Date(lastUpdated).toLocaleTimeString() : ''" />
             <InfoItem label="Версия ОС" :value="osInfo?.OsRelease?.PRETTY_NAME" />
+            <InfoItem label="SSH статус" :value="sshStatus ? 'Включен' : 'Выключен'" />
+          </div>
+        </div>
+
+        <!-- Быстрый доступ к журналам -->
+        <div class="bg-[#222228] rounded-xl p-6">
+          <h2 class="text-lg font-semibold mb-4">Журналы системы</h2>
+          <div class="grid grid-cols-2 gap-2">
+            <button 
+              @click="showJournalModal('system')"
+              class="px-3 py-2 bg-gray-600 rounded text-sm hover:bg-gray-700 transition-colors"
+            >
+              Система
+            </button>
+            <button 
+              @click="showJournalModal('core')"
+              class="px-3 py-2 bg-gray-600 rounded text-sm hover:bg-gray-700 transition-colors"
+            >
+              Ядро
+            </button>
+            <button 
+              @click="showJournalModal('connections')"
+              class="px-3 py-2 bg-gray-600 rounded text-sm hover:bg-gray-700 transition-colors"
+            >
+              Подключения
+            </button>
+            <button 
+              @click="showJournalModal('port-forwarding')"
+              class="px-3 py-2 bg-gray-600 rounded text-sm hover:bg-gray-700 transition-colors"
+            >
+              Порт-форвардинг
+            </button>
           </div>
         </div>
       </div>
@@ -444,6 +563,51 @@ onUnmounted(() => {
       :nodeId="id" 
       @close="showCommandModal = false" 
     />
+
+    <!-- Модальное окно с логами -->
+    <div v-if="showLogsModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+      <div class="bg-[#222228] rounded-xl p-6 w-11/12 max-w-4xl max-h-[80vh] overflow-hidden">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-semibold">Журнал: {{ selectedJournal }}</h2>
+          <button @click="showLogsModal = false" class="text-gray-400 hover:text-white">
+            ✕
+          </button>
+        </div>
+        
+        <div class="mb-4 flex gap-2">
+          <select 
+            v-model="selectedJournal" 
+            @change="loadJournal(selectedJournal)"
+            class="bg-[#37343D] border border-[#555461] rounded-lg px-3 py-2 text-white"
+          >
+            <option value="system">Система</option>
+            <option value="core">Ядро</option>
+            <option value="connections">Подключения</option>
+            <option value="port-forwarding">Порт-форвардинг</option>
+          </select>
+          
+          <button 
+            @click="loadJournal(selectedJournal)"
+            class="px-3 py-2 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Обновить
+          </button>
+        </div>
+        
+        <div class="bg-[#1a1a1f] rounded-lg p-4 overflow-auto max-h-[60vh]">
+          <pre class="text-sm whitespace-pre-wrap">{{ journalContent }}</pre>
+        </div>
+        
+        <div class="mt-4 flex justify-end">
+          <button 
+            @click="showLogsModal = false"
+            class="px-4 py-2 bg-gray-600 rounded-lg hover:bg-gray-700 transition-colors"
+          >
+            Закрыть
+          </button>
+        </div>
+      </div>
+    </div>
 
     <!-- Сообщение об ошибке -->
     <div v-if="hasError" class="fixed bottom-4 right-4 bg-red-500/90 text-white p-4 rounded-lg shadow-lg">
