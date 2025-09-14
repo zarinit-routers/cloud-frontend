@@ -1,12 +1,7 @@
 <script setup lang="ts">
 import type { Node, Response } from "@/models";
 import { TOKEN } from "@/consts";
-import CommandInterface from "@/components/CommandInterface.vue";
-import DeviceHeader from "@/components/DeviceHeader.vue";
-import SystemResources from "@/components/SystemResources.vue";
-import ModemsSection from "@/components/ModemsSection.vue";
-import InfoItem from "@/components/InfoItem.vue";
-import TagEdit from "@/components/TagEdit.vue";
+
 
 const route = useRoute();
 const id = computed(() => route.params.id);

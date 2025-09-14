@@ -26,7 +26,6 @@
 </template>
 
 <script setup lang="ts">
-import ModemItem from "@/components/ModemItem.vue";
 
 defineProps<{
   modemsList: any[]
