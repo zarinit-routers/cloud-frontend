@@ -142,7 +142,7 @@ const getDeviceName = computed(() => {
     if (deviceInfo.value.model) {
         return `${deviceInfo.value.manufacturer || ""} ${deviceInfo.value.model}`.trim();
     }
-    return props.node.name || "Устройство";
+    return false;
 });
 
 const getDiskInfo = computed(() => {
@@ -199,10 +199,11 @@ const forceRefresh = async (event: Event) => {
                 <!-- Заголовок -->
                 <div class="flex items-center justify-between mb-3">
                     <h3 class="font-bold text-lg truncate max-w-[200px]">
-                        {{ getDeviceName }}<span v-if="node.name" class="text-xs text-gray-400"> ({{ node.name }}) </span>
+                        {{ node.name }} <span v-if="getDeviceName" class="font-normal text-xs text-gray-400"> ({{ getDeviceName }}) </span>
 
                         <span v-if="isLoading" class="ml-2 text-yellow-400 text-sm">⟳</span>
                     </h3>
+                    <div></div>
                     <div class="flex items-center gap-2">
                         <div class="w-2 h-2 rounded-full" :class="node.connected ? 'bg-green-500' : 'bg-red-500'" :title="hasError ? 'Ошибка подключения' : 'Онлайн'"></div>
                         <span v-if="!node.connected" class="text-xs text-gray-400" :title="`Обновлено: ${formatLastUpdated()}`">

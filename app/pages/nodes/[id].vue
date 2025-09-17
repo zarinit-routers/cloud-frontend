@@ -329,7 +329,7 @@ onUnmounted(() => {
 
 <template>
     <div class="min-h-screen bg-[#1a1a1f] text-white p-4">
-        <DeviceHeader :nodeName="data?.node.name" :deviceInfo="deviceInfo" :hasError="hasError" :isLoading="isLoading" :lastUpdated="lastUpdated" @refresh="forceRefresh" />
+        <DeviceHeader :nodeName="data?.node.name" :deviceInfo="deviceInfo" :hasError="hasError" :isLoading="isLoading" :lastUpdated="lastUpdated" @refresh="forceRefresh" :node="data?.node ?? {}" />
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <!-- Левая колонка - Информация об устройстве -->
