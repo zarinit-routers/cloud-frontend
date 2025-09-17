@@ -8,16 +8,14 @@ export default defineNuxtConfig({
         server: {
             proxy: {
                 "/api/": {
-                    target: "http://localhost",
+                    target: "http://dev.serv",
                     changeOrigin: true,
                 },
             },
         },
-        
     },
     css: ["/main.css"],
     devServer: {
         port: 3001,
-    
     },
 });
