@@ -14,7 +14,7 @@
                 <span class="text-sm text-gray-400">{{ hasError ? "Ошибка" : "Онлайн" }}</span>
             </div>
 
-            <button @click="$emit('refresh')" class="p-2 bg-[#37343D] rounded-lg hover:bg-[#45434d] transition-colors" :disabled="isLoading">
+            <button title="Обновить данные" @click="$emit('refresh')" class="cursor-pointer p-2 bg-[#37343D] rounded-lg hover:bg-[#45434d] transition-colors" :disabled="isLoading">
                 <span v-if="isLoading" class="animate-spin">⟳</span>
                 <span v-else>🔄</span>
             </button>
