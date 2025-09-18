@@ -51,6 +51,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
+// Определяем props
 defineProps<{
   modemsList: any[]
 }>()
@@ -62,16 +63,16 @@ defineEmits<{
 }>()
 
 // Получаем ID модема из dbus-path
-// Получаем ID модема из различных возможных полей
 const getModemId = (modem: any) => {
   const dbusPath = modem.dbusPath || modem.dbus_path || modem['dbus-path'] || '';
   return dbusPath ? dbusPath.split('/').pop() : modem.id || 'unknown';
 }
 
-// Считаем активные модемы
+// Считаем активные модемы - теперь используем переданный prop
 const activeModemsCount = computed(() => {
-  return modemsList.value.filter(modem => 
-    modem.generic?.['power-state'] === 'on' && 
+  const modems = (props as any).modemsList || [];
+  return modems.filter((modem: any) => 
+    (modem.generic?.['power-state'] === 'on' || modem.powerState === 'on') && 
     modem.generic?.sim && 
     modem.generic.sim !== '--'
   ).length;
