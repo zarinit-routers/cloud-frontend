@@ -72,8 +72,6 @@ const executeDeviceCommand = async (command: string, args?: any): Promise<any> =
     }
 };
 
-// Оптимизированная функция выполнения команд с кэшированием
-
 // Функции для управления SSH
 const getSshStatus = async () => {
     try {
@@ -121,10 +119,13 @@ const rebootSystem = async () => {
 // Функции для работы с модемами и SIM-картами
 const loadModems = async () => {
     try {
-        modemsList.value = await executeDeviceCommand("v1/modems/list");
+        const response = await executeDeviceCommand("v1/modems/list");
+        // Проверяем разные возможные форматы ответа
+        modemsList.value = response.modems || response.data || response || [];
         return modemsList.value;
     } catch (error) {
         console.error("Ошибка загрузки модемов:", error);
+        modemsList.value = []; // Сбрасываем список при ошибке
         throw error;
     }
 };
@@ -133,6 +134,14 @@ const toggleModem = async (modemId: string, enable: boolean) => {
     try {
         const command = enable ? "v1/modems/enable" : "v1/modems/disable";
         await executeDeviceCommand(command, { modem: modemId });
+        
+        // Локально обновляем статус модема для мгновенного отклика UI
+        const modemIndex = modemsList.value.findIndex((m) => m.id === modemId);
+        if (modemIndex !== -1) {
+            modemsList.value[modemIndex].enabled = enable;
+        }
+        
+        // Затем обновляем весь список
         await loadModems();
     } catch (error) {
         console.error("Ошибка переключения модема:", error);
@@ -153,6 +162,23 @@ const getModemSignal = async (modemId: string) => {
         console.error("Ошибка получения сигнала модема:", error);
         throw error;
     }
+};
+
+// Обработчики с обработкой ошибок
+const handleToggleModem = async (modemId: string, enabled: boolean) => {
+  try {
+    await toggleModem(modemId, enabled);
+  } catch (error) {
+    console.error('Ошибка переключения модема:', error);
+  }
+};
+
+const handleGetSignal = async (modemId: string) => {
+  try {
+    await getModemSignal(modemId);
+  } catch (error) {
+    console.error('Ошибка получения сигнала:', error);
+  }
 };
 
 // Функции для работы с журналами
@@ -403,7 +429,27 @@ onUnmounted(() => {
 
             <!-- Правая колонка - Сим карты и модемы -->
             <div class="space-y-6">
-                <ModemsSection :modemsList="modemsList" @toggleModem="toggleModem" @getSignal="getModemSignal" @refreshModems="loadModems" />
+                <ModemsSection 
+                  :modemsList="modemsList" 
+                  @toggleModem="handleToggleModem" 
+                  @getSignal="handleGetSignal" 
+                  @refreshModems="loadModems" 
+                />
+
+                <!-- Отладочная информация модемов -->
+                <div class="bg-[#222228] rounded-xl p-6">
+                    <h2 class="text-lg font-semibold mb-4">Отладка модемов</h2>
+                    <div class="text-sm space-y-2">
+                        <div>Количество модемов: {{ modemsList.length }}</div>
+                        <div>Данные: {{ JSON.stringify(modemsList) }}</div>
+                        <button 
+                          @click="loadModems" 
+                          class="mt-2 px-3 py-1 bg-blue-600 rounded text-sm"
+                        >
+                            Обновить модемы
+                        </button>
+                    </div>
+                </div>
 
                 <!-- Дополнительная информация -->
                 <div class="bg-[#222228] rounded-xl p-6">
