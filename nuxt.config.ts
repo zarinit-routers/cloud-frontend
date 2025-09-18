@@ -8,7 +8,7 @@ export default defineNuxtConfig({
         server: {
             proxy: {
                 "/api/": {
-                    target: "http://dev.serv",
+                    target: "http://79.174.70.81/",
                     changeOrigin: true,
                 },
             },
