@@ -1,14 +1,23 @@
 <template>
   <div class="bg-[#222228] rounded-xl p-6">
-    <h2 class="text-lg font-semibold mb-4">Модемы и SIM карты</h2>
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-semibold">Модемы и SIM карты</h2>
+      <button 
+        @click="$emit('refreshModems')"
+        class="px-3 py-1 bg-blue-600 rounded text-sm hover:bg-blue-700 transition-colors flex items-center gap-2"
+      >
+        <span>🔄</span>
+        Обновить
+      </button>
+    </div>
     
     <div v-if="modemsList.length > 0" class="space-y-4">
       <ModemItem 
-        v-for="modem in modemsList" 
-        :key="modem.id" 
+        v-for="(modem, index) in modemsList" 
+        :key="modem.dbus-path || index" 
         :modem="modem"
-        @toggle="(enabled) => $emit('toggleModem', modem.id, enabled)"
-        @getSignal="$emit('getSignal', modem.id)"
+        @toggle="(enabled) => $emit('toggleModem', getModemId(modem), enabled)"
+        @getSignal="$emit('getSignal', getModemId(modem))"
       />
     </div>
     
@@ -22,10 +31,25 @@
         Обновить
       </button>
     </div>
+
+    <!-- Статистика -->
+    <div v-if="modemsList.length > 0" class="mt-6 pt-4 border-t border-gray-600">
+      <div class="grid grid-cols-2 gap-4 text-sm">
+        <div class="text-center">
+          <div class="text-2xl font-bold text-green-400">{{ activeModemsCount }}</div>
+          <div class="text-gray-400">Активных</div>
+        </div>
+        <div class="text-center">
+          <div class="text-2xl font-bold text-blue-400">{{ modemsList.length }}</div>
+          <div class="text-gray-400">Всего</div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 
 defineProps<{
   modemsList: any[]
@@ -36,4 +60,18 @@ defineEmits<{
   getSignal: [id: string]
   refreshModems: []
 }>()
+
+// Получаем ID модема из dbus-path
+const getModemId = (modem: any) => {
+  return modem.dbus-path?.split('/').pop() || modem.id || 'unknown';
+}
+
+// Считаем активные модемы
+const activeModemsCount = computed(() => {
+  return modemsList.value.filter(modem => 
+    modem.generic?.['power-state'] === 'on' && 
+    modem.generic?.sim && 
+    modem.generic.sim !== '--'
+  ).length;
+});
 </script>

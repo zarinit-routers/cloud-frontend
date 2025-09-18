@@ -118,16 +118,23 @@ const rebootSystem = async () => {
 
 // Функции для работы с модемами и SIM-картами
 const loadModems = async () => {
-    try {
-        const response = await executeDeviceCommand("v1/modems/list");
-        // Проверяем разные возможные форматы ответа
-        modemsList.value = response.modems || response.data || response || [];
-        return modemsList.value;
-    } catch (error) {
-        console.error("Ошибка загрузки модемов:", error);
-        modemsList.value = []; // Сбрасываем список при ошибке
-        throw error;
-    }
+  try {
+    const response = await executeDeviceCommand("v1/modems/list");
+    // Обрабатываем разные форматы ответа
+    const modemsData = response.modems || response.data || response || [];
+    
+    // Преобразуем данные для удобства использования
+    modemsList.value = modemsData.map((modem: any) => ({
+      ...modem,
+      id: modem.dbus-path?.split('/').pop() || 'unknown'
+    }));
+    
+    return modemsList.value;
+  } catch (error) {
+    console.error("Ошибка загрузки модемов:", error);
+    modemsList.value = [];
+    throw error;
+  }
 };
 
 const toggleModem = async (modemId: string, enable: boolean) => {
@@ -436,20 +443,7 @@ onUnmounted(() => {
                   @refreshModems="loadModems" 
                 />
 
-                <!-- Отладочная информация модемов -->
-                <div class="bg-[#222228] rounded-xl p-6">
-                    <h2 class="text-lg font-semibold mb-4">Отладка модемов</h2>
-                    <div class="text-sm space-y-2">
-                        <div>Количество модемов: {{ modemsList.length }}</div>
-                        <div>Данные: {{ JSON.stringify(modemsList) }}</div>
-                        <button 
-                          @click="loadModems" 
-                          class="mt-2 px-3 py-1 bg-blue-600 rounded text-sm"
-                        >
-                            Обновить модемы
-                        </button>
-                    </div>
-                </div>
+                
 
                 <!-- Дополнительная информация -->
                 <div class="bg-[#222228] rounded-xl p-6">
