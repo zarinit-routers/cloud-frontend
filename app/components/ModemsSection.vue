@@ -52,7 +52,7 @@
 import { computed } from 'vue';
 
 // Определяем props
-defineProps<{
+const props = defineProps<{
   modemsList: any[]
 }>()
 
