@@ -174,13 +174,18 @@ const providerName = computed(() => providerInfo.value.name);
 const providerLogoText = computed(() => providerInfo.value.logo);
 
 // Статус модема
-const isModemEnabled = computed(() => {
-  return props.modem.generic?.['power-state'] === 'on';
+// Безопасное получение различных свойств с проверкой на существование
+const hasSimCard = computed(() => {
+  const sim = props.modem.generic?.sim || props.modem.sim;
+  return sim && sim !== '--' && sim !== '/' && sim !== '';
 });
 
-const hasSimCard = computed(() => {
-  return props.modem.generic?.sim && props.modem.generic.sim !== '--' && props.modem.generic.sim !== '/';
-});
+const isModemEnabled = computed(() => {
+  const powerState = props.modem.generic?.['power-state'] || props.modem.powerState;
+  return powerState === 'on';
+})
+
+
 
 const statusText = computed(() => {
   if (!hasSimCard.value) return 'Нет SIM-карты';

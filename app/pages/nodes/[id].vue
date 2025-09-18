@@ -119,16 +119,41 @@ const rebootSystem = async () => {
 // Функции для работы с модемами и SIM-картами
 const loadModems = async () => {
   try {
+    console.log("Запрос списка модемов...");
     const response = await executeDeviceCommand("v1/modems/list");
+    console.log("Ответ от API модемов:", response);
+    
     // Обрабатываем разные форматы ответа
-    const modemsData = response.modems || response.data || response || [];
+    let modemsData = [];
+    
+    if (Array.isArray(response)) {
+      modemsData = response;
+    } else if (response && typeof response === 'object') {
+      // Проверяем различные возможные структуры
+      modemsData = response.modems || 
+                  response.data || 
+                  response.list || 
+                  response.results || 
+                  Object.values(response).find(Array.isArray) || 
+                  [];
+    }
     
     // Преобразуем данные для удобства использования
-    modemsList.value = modemsData.map((modem: any) => ({
-      ...modem,
-      id: modem.dbus-path?.split('/').pop() || 'unknown'
-    }));
+    modemsList.value = modemsData.map((modem: any) => {
+      // Безопасное получение dbusPath (обрабатываем разные варианты написания)
+      const dbusPath = modem.dbusPath || modem.dbus_path || modem['dbus-path'] || '';
+      const modemId = dbusPath ? dbusPath.split('/').pop() : modem.id || 'unknown';
+      
+      return {
+        ...modem,
+        id: modemId,
+        // Нормализуем структуру
+        generic: modem.generic || modem.status || modem,
+        '3gpp': modem['3gpp'] || modem.threegpp || modem.cellular || {}
+      };
+    });
     
+    console.log("Обработанные модемы:", modemsList.value);
     return modemsList.value;
   } catch (error) {
     console.error("Ошибка загрузки модемов:", error);

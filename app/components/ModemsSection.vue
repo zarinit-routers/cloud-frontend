@@ -62,8 +62,10 @@ defineEmits<{
 }>()
 
 // Получаем ID модема из dbus-path
+// Получаем ID модема из различных возможных полей
 const getModemId = (modem: any) => {
-  return modem.dbus-path?.split('/').pop() || modem.id || 'unknown';
+  const dbusPath = modem.dbusPath || modem.dbus_path || modem['dbus-path'] || '';
+  return dbusPath ? dbusPath.split('/').pop() : modem.id || 'unknown';
 }
 
 // Считаем активные модемы
