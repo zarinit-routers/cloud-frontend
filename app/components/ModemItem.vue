@@ -18,6 +18,7 @@
           @change="handleToggle"
           :disabled="isLoading || !hasSimCard"
         >
+        {{ modem.powerState === 'on' ? 'Включен' : 'Выключен' }}
         <div 
           class="w-11 h-6 peer-focus:outline-none rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all" 
           :class="[
@@ -183,6 +184,7 @@ const hasSimCard = computed(() => {
 const isModemEnabled = computed(() => {
   const powerState = props.modem.generic?.['power-state'] || props.modem.powerState;
   return powerState === 'on';
+  
 })
 
 

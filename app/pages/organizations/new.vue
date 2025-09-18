@@ -30,12 +30,10 @@ const createOrganization = async () => {
 
     
     // Перенаправляем на страницу созданной организации
-    navigateTo(`/organizations/`);
   } catch (error) {
-    console.error("Ошибка создания организации:", error);
-    errorMessage.value = 'Ошибка создания организации';
+  
   } finally {
-    isLoading.value = false;
+    navigateTo(`/organizations/`);
   }
 };
 </script>
