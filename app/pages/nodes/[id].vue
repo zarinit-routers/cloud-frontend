@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { Node, Response } from "@/models";
 import { TOKEN } from "@/consts";
+import { useRoute } from "vue-router";
 
-import { useAxios } from "@vueuse/integrations/useAxios";
 
 const route = useRoute();
 const id = computed(() => route.params.id);
@@ -83,6 +83,7 @@ const getSshStatus = async () => {
         throw error;
     }
 };
+
 
 const toggleSsh = async () => {
     try {
@@ -383,6 +384,28 @@ onUnmounted(() => {
         clearInterval(refreshTimer);
     }
 });
+
+defineEmits<{
+  toggleModem: [id: string, enabled: boolean]
+  getSignal: [id: string]
+  refreshModems: []
+  updateModems: [] // Добавляем это
+}>()
+
+// Добавьте обработчик:
+
+const handleUpdateModems = async () => {
+  try {
+    await loadModems(); // Эта функция уже определена в вашем компоненте
+    // Можно добавить уведомление об успешном обновлении
+    console.log('Данные модемов успешно обновлены');
+  } catch (error) {
+    console.error('Ошибка обновления модемов:', error);
+  }
+};
+
+
+
 </script>
 
 <template>
@@ -462,10 +485,11 @@ onUnmounted(() => {
             <!-- Правая колонка - Сим карты и модемы -->
             <div class="space-y-6">
                 <ModemsSection 
-                  :modemsList="modemsList" 
-                  @toggleModem="handleToggleModem" 
-                  @getSignal="handleGetSignal" 
-                  @refreshModems="loadModems" 
+                    :modemsList="modemsList" 
+                    @toggleModem="handleToggleModem" 
+                    @getSignal="handleGetSignal" 
+                    @refreshModems="loadModems"
+                    @updateModems="handleUpdateModems"
                 />
 
                 

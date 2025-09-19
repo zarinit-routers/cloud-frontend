@@ -18,7 +18,7 @@
           @change="handleToggle"
           :disabled="isLoading || !hasSimCard"
         >
-        {{ modem.powerState === 'on' ? 'Включен' : 'Выключен' }}
+
         <div 
           class="w-11 h-6 peer-focus:outline-none rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all" 
           :class="[
@@ -40,7 +40,7 @@
       </div>
       
       <!-- Сигнал -->
-      <div v-if="hasSignal" class="flex justify-between items-center">
+      <div v-if="hasSignal && isModemEnabled" class="flex justify-between items-center">
         <span class="text-gray-400">Сигнал:</span>
         <div class="flex items-center gap-1">
           <span class="text-gray-300">{{ modem.generic['signal-quality']?.value }}%</span>
@@ -55,7 +55,7 @@
       </div>
       
       <!-- Технологии -->
-      <div v-if="accessTechnologies.length > 0" class="flex justify-between">
+      <div v-if="accessTechnologies.length > 0 && isModemEnabled" class="flex justify-between">
         <span class="text-gray-400">Технологии:</span>
         <span class="text-gray-300">{{ accessTechnologies.join(', ') }}</span>
       </div>
@@ -67,7 +67,7 @@
       </div>
       
       <!-- APN -->
-      <div v-if="apn" class="flex justify-between">
+      <div v-if="apn && isModemEnabled" class="flex justify-between">
         <span class="text-gray-400">APN:</span>
         <span class="text-gray-300 text-xs">{{ apn }}</span>
       </div>
@@ -76,8 +76,9 @@
     <!-- Кнопки действий -->
     <div class="flex gap-2">
       <button 
+        v-if="isModemEnabled && hasSimCard"
         @click="$emit('getSignal')"
-        :disabled="isLoading || !hasSimCard"
+        :disabled="isLoading"
         class="flex-1 px-3 py-1 bg-blue-600 rounded text-sm hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         :class="providerButtonClasses"
       >
@@ -89,14 +90,22 @@
         class="flex-1 px-3 py-1 bg-yellow-600 rounded text-sm hover:bg-yellow-700 transition-colors"
         disabled
       >
-        Нет SIM
+        Нет SIM-карты
+      </button>
+
+      <button 
+        v-if="!isModemEnabled && hasSimCard"
+        class="flex-1 px-3 py-1 bg-gray-600 rounded text-sm cursor-not-allowed"
+        disabled
+      >
+        Модем выключен
       </button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 
 const props = defineProps<{
   modem: any
@@ -105,9 +114,21 @@ const props = defineProps<{
 const emit = defineEmits<{
   toggle: [enabled: boolean]
   getSignal: []
+  update: []
 }>()
 
 const isLoading = ref(false);
+const lastActionSuccess = ref<boolean | null>(null);
+const showStatusMessage = ref(false);
+
+// Показываем статусное сообщение на 3 секунды
+const showTempStatus = (success: boolean) => {
+  lastActionSuccess.value = success;
+  showStatusMessage.value = true;
+  setTimeout(() => {
+    showStatusMessage.value = false;
+  }, 3000);
+};
 
 // Определяем провайдера по operator-name или operator-code
 const providerInfo = computed(() => {
@@ -174,32 +195,41 @@ const providerLogoClasses = computed(() => {
 const providerName = computed(() => providerInfo.value.name);
 const providerLogoText = computed(() => providerInfo.value.logo);
 
-// Статус модема
-// Безопасное получение различных свойств с проверкой на существование
+// Статус модема - используем только generic.state
 const hasSimCard = computed(() => {
-  const sim = props.modem.generic?.sim || props.modem.sim;
+  const sim = props.modem.generic?.sim;
   return sim && sim !== '--' && sim !== '/' && sim !== '';
 });
 
+// Используем только generic.state для определения состояния модема
 const isModemEnabled = computed(() => {
-  const powerState = props.modem.generic?.['power-state'] || props.modem.powerState;
-  return powerState === 'on';
-  
-})
-
-
+  const state = props.modem.generic?.state;
+  // Модем включен, если состояние не 'disabled' и не 'failed'
+  return state && state !== 'disabled' && state !== 'failed' && state !== 'unknown';
+});
 
 const statusText = computed(() => {
   if (!hasSimCard.value) return 'Нет SIM-карты';
-  if (props.modem.generic?.state === 'registered') return 'Активен';
-  if (props.modem.generic?.state === 'failed') return 'Ошибка';
-  return props.modem.generic?.state || 'Неизвестно';
+  
+  const state = props.modem.generic?.state;
+  if (!state || state === 'disabled') return 'Выключен';
+  if (state === 'registered') return 'Активен';
+  if (state === 'connecting') return 'Подключение';
+  if (state === 'failed') return 'Ошибка';
+  if (state === 'searching') return 'Поиск сети';
+  
+  return state;
 });
 
 const statusClasses = computed(() => {
   if (!hasSimCard.value) return 'text-yellow-400';
-  if (props.modem.generic?.state === 'registered') return 'text-green-400';
-  if (props.modem.generic?.state === 'failed') return 'text-red-400';
+  
+  const state = props.modem.generic?.state;
+  if (!state || state === 'disabled') return 'text-gray-400';
+  if (state === 'registered') return 'text-green-400';
+  if (state === 'connecting' || state === 'searching') return 'text-blue-400';
+  if (state === 'failed') return 'text-red-400';
+  
   return 'text-gray-400';
 });
 
@@ -247,12 +277,22 @@ const handleToggle = async (event: Event) => {
   isLoading.value = true;
   try {
     await emit('toggle', target.checked);
+    showTempStatus(true);
+    // Запрашиваем обновление данных после успешного переключения
+    setTimeout(() => emit('update'), 1000);
   } catch (error) {
     console.error('Ошибка переключения модема:', error);
+    showTempStatus(false);
   } finally {
     isLoading.value = false;
   }
 };
+
+// Следим за изменениями модема для автоматического обновления
+watch(() => props.modem, () => {
+  // При изменении данных модема сбрасываем статус загрузки
+  isLoading.value = false;
+}, { deep: true });
 </script>
 
 <style scoped>
@@ -266,5 +306,22 @@ const handleToggle = async (event: Event) => {
 @keyframes gradientShift {
   0% { background-position: 100% 100%; }
   100% { background-position: 0% 0%; }
+}
+
+.status-message {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+  z-index: 10;
+  animation: fadeInOut 3s ease-in-out;
+}
+
+@keyframes fadeInOut {
+  0%, 100% { opacity: 0; transform: translateY(-10px); }
+  10%, 90% { opacity: 1; transform: translateY(0); }
 }
 </style>
