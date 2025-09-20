@@ -239,14 +239,14 @@ watch(organization, (newOrg) => {
           </div>
           <div class="flex justify-between items-center">
             <span class="text-gray-300">Дата создания:</span>
-            <span>{{ new Date(organization.creationDate).toLocaleDateString() }}</span>
+            <span>{{ organization.creationDate}}</span>
           </div>
           <div class="flex justify-between items-center">
             <span class="text-gray-300">Последнее обновление:</span>
-            <span>{{ new Date(organization.lastUpdate).toLocaleDateString() }}</span>
+            <span>{{ organization.lastUpdate }}</span>
           </div>
           <div class="flex justify-between items-center">
-            <span class="text-gray-300">Паспфраза:</span>
+            <span class="text-gray-300">Парольная фраза:</span>
             <span class="font-mono text-sm">{{ organization.passphrase }}</span>
           </div>
         </div>
@@ -262,7 +262,7 @@ watch(organization, (newOrg) => {
             @click="generatePassphrase"
             class="w-full px-4 py-2 bg-[#37343D] rounded-lg hover:bg-[#44434D] transition-colors border border-[#555461]"
           >
-            Сгенерировать новую паспфразу
+            Сгенерировать новую парольную фразу
           </button>
           <button 
             @click="deleteOrganization"
@@ -331,35 +331,7 @@ watch(organization, (newOrg) => {
       Загрузка...
     </div>
 
-    <!-- Модальное окно редактирования -->
-    <Modal v-model:show="showEditModal" title="Редактировать организацию">
-      <form @submit.prevent="updateOrganization" class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-300 mb-1">Название</label>
-          <input 
-            v-model="editForm.name" 
-            type="text" 
-            required
-            class="w-full bg-[#37343D] border border-[#555461] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-[#8c8c8e]"
-          />
-        </div>
-        <div class="flex gap-2 justify-end">
-          <button 
-            type="button" 
-            @click="showEditModal = false"
-            class="px-4 py-2 bg-[#37343D] rounded-lg hover:bg-[#44434D] transition-colors border border-[#555461]"
-          >
-            Отмена
-          </button>
-          <button 
-            type="submit"
-            class="px-4 py-2 bg-[#2a2a30] rounded-lg hover:bg-[#37343D] transition-colors border border-[#555461]"
-          >
-            Сохранить
-          </button>
-        </div>
-      </form>
-    </Modal>
+    
 
     <!-- Модальное окно добавления пользователей -->
     <Modal v-model:show="showAddUsersModal" title="Добавить участников">
@@ -490,13 +462,13 @@ watch(organization, (newOrg) => {
     </Modal>
 
     <!-- Модальное окно новой паспфразы -->
-    <Modal v-model:show="showPassphraseModal" title="Новая паспфраза">
+    <Modal v-model:show="showPassphraseModal" title="Новая парольная фраза">
       <div class="space-y-4">
-        <p class="text-gray-300">Новая паспфраза для организации:</p>
+        <p class="text-gray-300">Новая парольная для организации:</p>
         <div class="bg-[#37343D] rounded-lg p-4">
           <code class="font-mono text-lg break-all">{{ newPassphrase }}</code>
         </div>
-        <p class="text-sm text-gray-400">Сохраните эту паспфразу в безопасном месте!</p>
+        <p class="text-sm text-gray-400">Сохраните эту парольную фразу в безопасном месте!</p>
         <div class="flex justify-end">
           <button 
             @click="showPassphraseModal = false"

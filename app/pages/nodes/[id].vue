@@ -454,13 +454,13 @@ const handleUpdateModems = async () => {
                 <div class="bg-[#222228] rounded-xl p-6">
                     <h2 class="text-lg font-semibold mb-4">Управление системой</h2>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <button @click="rebootSystem" class="px-4 py-3 bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center gap-2" :disabled="isRebooting">
+                        <button @click="rebootSystem" class="px-4 py-3  bg-gradient-to-r from-slate-600 to-slate-700 rounded-lg hover:from-slate-700 hover:to-slate-800 transition-colors flex items-center justify-center gap-2" :disabled="isRebooting">
                             <span v-if="isRebooting" class="animate-spin">⟳</span>
                             <span v-else>🔄</span>
                             {{ isRebooting ? "Перезагрузка..." : "Перезагрузить систему" }}
                         </button>
 
-                        <button @click="showJournalModal('system')" class="px-4 py-3 bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2">
+                        <button @click="showJournalModal('system')" class="px-4 py-3  bg-gradient-to-r from-slate-600 to-slate-700 rounded-lg hover:from-slate-700 hover:to-slate-800 transition-colors flex items-center justify-center gap-2">
                             📋 Системные логи
                         </button>
                     </div>
